@@ -95,6 +95,104 @@ def create_app(config_name=None):
     # Register anonymous visitor cookies & metrics logging
     register_request_handlers(app)
     
+    with app.app_context():
+        # Ensure database tables exist in production
+        db.create_all()
+        
+        # Self-healing check for Roles, Admin user, and Communities
+        from app.models.user import User, Role
+        from app.models.community import Community
+        
+        # Seed basic roles if not present
+        if not Role.query.filter_by(name='Admin').first():
+            admin_role = Role(name='Admin', description='Global platform administrator')
+            mod_role = Role(name='Moderator', description='Community moderator')
+            user_role = Role(name='User', description='Standard registered user')
+            db.session.add_all([admin_role, mod_role, user_role])
+            db.session.commit()
+            
+        # Seed admin user if not present
+        admin_role = Role.query.filter_by(name='Admin').first()
+        admin_user = User.query.filter_by(username='admin').first()
+        if not admin_user and admin_role:
+            admin_user = User(
+                username='admin',
+                email='admin@terravault.com',
+                role_id=admin_role.id,
+                is_verified=True
+            )
+            admin_user.set_password('admin123')
+            db.session.add(admin_user)
+            
+            # Create corresponding Profile
+            from app.models.user import Profile
+            profile = Profile(user=admin_user)
+            db.session.add(profile)
+            db.session.commit()
+            
+        # Seed basic communities if not present
+        if not Community.query.first():
+            communities_data = [
+                {'name': 'History', 'slug': 'history', 'description': 'Discuss ancient records, historical milestones, and humanity\'s lineage.', 'icon': 'fa-monument'},
+                {'name': 'Mythology', 'slug': 'mythology', 'description': 'Debate ancient legends, cryptids, folklore, and mythic civilizations.', 'icon': 'fa-dragon'},
+                {'name': 'Disasters', 'slug': 'disasters', 'description': 'Revisit historical cataclysms, fires, volcanic eruptions, and nuclear accidents.', 'icon': 'fa-burst'},
+                {'name': 'Environment', 'slug': 'environment', 'description': 'Share news and insights on Earth\'s ecosystems, climate change, and geographies.', 'icon': 'fa-leaf'},
+                {'name': 'Cosmology', 'slug': 'cosmology', 'description': 'Explore stellar horizons: black holes, astronomical anomalies, and deep space.', 'icon': 'fa-meteor'},
+                {'name': 'Archaeology', 'slug': 'archaeology', 'description': 'Discuss monuments, megaliths, ancient cities, and archaeological digs.', 'icon': 'fa-compass'}
+            ]
+            for comm in communities_data:
+                c = Community(name=comm['name'], slug=comm['slug'], description=comm['description'], icon=comm['icon'])
+                db.session.add(c)
+            db.session.commit()
+
+        # Seed articles if not present
+        from app.models.article import Article, Category
+        if not Article.query.first() and admin_user:
+            import json
+            import re
+            json_path = os.path.join(root_dir, 'articles.json')
+            if os.path.exists(json_path):
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                cleaned = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
+                try:
+                    raw_articles = json.loads(cleaned)
+                    from app.services.cms_service import CMSService
+                    categories_dict = {}
+                    for cat_data in Category.query.all():
+                        categories_dict[cat_data.slug] = cat_data
+                    
+                    for art in raw_articles:
+                        cat_slug = art.get('category')
+                        category = categories_dict.get(cat_slug)
+                        if not category:
+                            category = Category(name=cat_slug.capitalize(), slug=cat_slug, description=f"{cat_slug.capitalize()} articles")
+                            db.session.add(category)
+                            db.session.commit()
+                            categories_dict[cat_slug] = category
+                            
+                        ref_list = [
+                            "Encyclopaedia Britannica, Online Edition.",
+                            "National Geographic Historical Archives.",
+                            f"Scientific Reports on {art.get('title')} (2024)."
+                        ]
+                        ref_data = "\n".join(ref_list)
+                        
+                        CMSService.create_article(
+                            title=art.get('title'),
+                            summary=art.get('summary'),
+                            content=art.get('content'),
+                            category_id=category.id,
+                            tags_list=[category.name.split()[0]],
+                            author_id=admin_user.id,
+                            image_url=art.get('img'),
+                            is_published=True,
+                            is_featured=(art.get('slug') in ['atlantis', 'chernobyl', 'black-holes']),
+                            references_data=ref_data
+                        )
+                except Exception as e:
+                    print(f"Self-healing articles seed failed: {e}")
+                    
     return app
 
 
