@@ -114,7 +114,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.REPAIR_BOT_TOKEN }}
-          branch: automation/ai-repair
+          branch: automation/ai-repair-${{ github.run_id }}
           base: deployment-ready
           title: "chore: automated repair proposal"
           body: |
