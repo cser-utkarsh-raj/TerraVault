@@ -300,11 +300,15 @@ def register_blueprints(app):
     from app.blueprints.wiki.routes import wiki_bp
     from app.blueprints.admin.routes import admin_bp
     from app.blueprints.community.routes import community_bp
+    from app.blueprints.auth.routes import auth_bp
+    from app.blueprints.cms.routes import cms_bp
     
     app.register_blueprint(main_bp)
     app.register_blueprint(wiki_bp, url_prefix='/wiki')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(community_bp, url_prefix='/c')
+    app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(cms_bp, url_prefix='/cms')
 
 
 def register_error_handlers(app):
