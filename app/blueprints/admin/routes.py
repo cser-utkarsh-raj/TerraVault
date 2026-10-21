@@ -549,26 +549,51 @@ def logs():
 @admin_required
 def analytics():
     # Category Views
-    category_views = db.session.query(
-        Category.name, db.func.sum(Article.views)
-    ).join(Article).group_by(Category.name).all()
+    try:
+        category_views = db.session.query(
+            Category.name, db.func.sum(Article.views)
+        ).join(Article).group_by(Category.name).all()
+    except Exception as e:
+        db.session.rollback()
+        category_views = []
     
     # Top Active Communities
-    community_discussions = db.session.query(
-        Community.name, db.func.count(Discussion.id)
-    ).join(Discussion).group_by(Community.name).all()
+    try:
+        community_discussions = db.session.query(
+            Community.name, db.func.count(Discussion.id)
+        ).join(Discussion).group_by(Community.name).all()
+    except Exception as e:
+        db.session.rollback()
+        community_discussions = []
     
     # Most bookmarked articles
-    bookmarked_articles = db.session.query(
-        Article.title, db.func.count(Bookmark.id)
-    ).join(Bookmark).group_by(Article.title).order_by(db.func.count(Bookmark.id).desc()).limit(5).all()
+    try:
+        bookmarked_articles = db.session.query(
+            Article.title, db.func.count(Bookmark.id)
+        ).join(Bookmark).group_by(Article.title).order_by(db.func.count(Bookmark.id).desc()).limit(5).all()
+    except Exception as e:
+        db.session.rollback()
+        bookmarked_articles = []
     
-    # Average reading duration
-    avg_reading_time = db.session.query(db.func.avg(ReadingHistory.time_spent)).scalar() or 0
-    avg_reading_minutes = round(avg_reading_time / 60.0, 2)
+    # Average reading duration (safely cast Decimal to float for PostgreSQL compatibility)
+    try:
+        avg_reading_time = db.session.query(db.func.avg(ReadingHistory.time_spent)).scalar() or 0
+        avg_reading_minutes = round(float(avg_reading_time) / 60.0, 2)
+    except Exception as e:
+        db.session.rollback()
+        avg_reading_minutes = 0.0
     
     # Detailed recent views
-    recent_views = PageViewMetric.query.order_by(PageViewMetric.timestamp.desc()).limit(15).all()
+    try:
+        recent_views = PageViewMetric.query.order_by(PageViewMetric.timestamp.desc()).limit(15).all()
+    except Exception as e:
+        db.session.rollback()
+        recent_views = []
+
+    try:
+        pending_reports = Report.query.filter_by(status='pending').count()
+    except Exception:
+        pending_reports = 0
     
     return render_template(
         'admin/dashboard.html',
@@ -577,5 +602,6 @@ def analytics():
         community_discussions=community_discussions,
         bookmarked_articles=bookmarked_articles,
         avg_reading_minutes=avg_reading_minutes,
-        recent_views=recent_views
+        recent_views=recent_views,
+        pending_reports=pending_reports
     )

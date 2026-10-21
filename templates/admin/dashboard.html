@@ -580,7 +580,7 @@
               <tbody>
                 {% for view in recent_views %}
                   <tr>
-                    <td class="text-muted small">{{ view.timestamp.strftime('%H:%M:%S (%b %d)') }}</td>
+                    <td class="text-muted small">{{ view.timestamp.strftime('%H:%M:%S (%b %d)') if view.timestamp else 'Just now' }}</td>
                     <td><code>{{ view.path }}</code></td>
                     <td><code class="small text-muted">#{{ view.visitor_uuid[:8] if view.visitor_uuid else 'Anonymous' }}</code></td>
                   </tr>
@@ -796,10 +796,10 @@
         new Chart(catCtx, {
           type: 'bar',
           data: {
-            labels: [{% for item in category_views %}'{{ item[0] }}',{% endfor %}],
+            labels: [{% for item in category_views %}{{ item[0]|tojson }},{% endfor %}],
             datasets: [{
               label: 'Total Views',
-              data: [{% for item in category_views %}{{ item[1] or 0 }},{% endfor %}],
+              data: [{% for item in category_views %}{{ (item[1] or 0)|int }},{% endfor %}],
               backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444']
             }]
           },
@@ -821,9 +821,9 @@
         new Chart(commCtx, {
           type: 'doughnut',
           data: {
-            labels: [{% for item in community_discussions %}'c/{{ item[0] }}',{% endfor %}],
+            labels: [{% for item in community_discussions %}{{ ('c/' ~ item[0])|tojson }},{% endfor %}],
             datasets: [{
-              data: [{% for item in community_discussions %}{{ item[1] }},{% endfor %}],
+              data: [{% for item in community_discussions %}{{ (item[1] or 0)|int }},{% endfor %}],
               backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#ec4899']
             }]
           },
