@@ -1,3 +1,5 @@
+"""Anonymous community, moderation, voting, and analytics data models."""
+
 from datetime import datetime
 from app.extensions import db
 

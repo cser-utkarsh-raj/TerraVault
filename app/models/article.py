@@ -1,7 +1,10 @@
+"""Knowledge-domain persistence: articles, classifications, and revisions."""
+
 from datetime import datetime
 from app.extensions import db
 
-# Association Table for Many-to-Many Article <-> Tag
+# This join table lets an article carry many tags and a tag group many articles
+# without duplicating tag text on every content row.
 article_tags = db.Table('article_tags',
     db.Column('article_id', db.Integer, db.ForeignKey('articles.id', ondelete='CASCADE'), primary_key=True),
     db.Column('tag_id', db.Integer, db.ForeignKey('tags.id', ondelete='CASCADE'), primary_key=True)
@@ -34,6 +37,7 @@ class Tag(db.Model):
 
 
 class Article(db.Model):
+    """Current editable article state; ArticleVersion stores its history."""
     __tablename__ = 'articles'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -54,7 +58,8 @@ class Article(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
+    # Cascading versions/bookmarks/history keeps dependent reader data from
+    # becoming orphaned if an article is permanently deleted.
     tags = db.relationship('Tag', secondary=article_tags, backref=db.backref('articles', lazy='dynamic'))
     versions = db.relationship('ArticleVersion', backref='article', cascade="all, delete-orphan", lazy=True)
     bookmarks = db.relationship('Bookmark', backref='article', cascade="all, delete-orphan", lazy=True)

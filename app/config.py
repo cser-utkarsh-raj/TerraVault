@@ -1,3 +1,5 @@
+"""Environment-driven configuration for local, test, and production apps."""
+
 import os
 from dotenv import load_dotenv
 
@@ -9,7 +11,8 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'default_secret_key')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Handle DB connection strings from Supabase (standardizing postgres:// to postgresql://)
+    # Some platforms provide postgres:// while SQLAlchemy expects postgresql://.
+    # Normalize once at startup instead of scattering provider-specific checks.
     db_url = os.environ.get('DATABASE_URL', 'sqlite:///terravault.db')
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)

@@ -1,9 +1,12 @@
 from sqlalchemy import or_
+"""Reader-facing article discovery and interaction helpers."""
+
 from app.extensions import db
 from app.models.article import Article, Category, Tag
 from app.models.interaction import Bookmark, ReadingHistory
 
 class WikiService:
+    """Queries published knowledge and records non-editor reader actions."""
     @staticmethod
     def get_article_by_slug(slug, increment_view=True):
         """Retrieve a published article by slug and optionally increment the view count."""

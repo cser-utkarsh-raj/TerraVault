@@ -1,3 +1,9 @@
+"""Anonymous discussion, comments, votes, and content reports.
+
+The app-level request hook establishes g.visitor before these handlers run.
+That browser-scoped identity enables moderation without requiring a login.
+"""
+
 from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, g, abort
 from app.extensions import db
@@ -109,7 +115,8 @@ def view_discussion(id):
     # Fetch top-level comments (excluding soft-deleted parents entirely, or rendering them as [removed] if they have replies)
     top_level_comments = Comment.query.filter_by(discussion_id=discussion.id, parent_id=None).order_by(Comment.created_at.asc()).all()
     
-    # Process scores and user votes for comments recursively
+    # Templates need score and current-visitor vote on every nested reply.
+    # Recursion mirrors the Comment parent/child relationship.
     def process_comments(comments_list):
         for comm in comments_list:
             comm_up = Vote.query.filter_by(comment_id=comm.id, value=1).count()
@@ -186,7 +193,8 @@ def cast_vote():
     if not g.visitor:
         return jsonify({'error': 'Anonymous session not established.'}), 400
         
-    # Check unique vote constraint in database
+    # Each visitor has one vote per target. Repeating the same direction clears
+    # it; switching direction updates it, so the UI behaves like a toggle.
     if discussion_id:
         vote = Vote.query.filter_by(visitor_uuid=g.visitor.uuid, discussion_id=discussion_id).first()
         if vote:

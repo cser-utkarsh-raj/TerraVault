@@ -1,3 +1,10 @@
+"""TerraVault application factory and cross-cutting HTTP setup.
+
+The factory builds a Flask application, attaches extensions, registers feature
+blueprints, and provides shared request/template behavior. Feature rules live
+in services and blueprints instead of this composition file.
+"""
+
 import os
 import logging
 from logging.handlers import RotatingFileHandler
@@ -9,7 +16,7 @@ from app.config import config_by_name
 from app.extensions import db, migrate, login_manager, csrf
 
 def create_app(config_name=None):
-    """Application Factory Pattern."""
+    """Create an independently configurable TerraVault Flask application."""
     if config_name is None:
         config_name = os.environ.get('FLASK_ENV', 'development')
         
@@ -21,7 +28,8 @@ def create_app(config_name=None):
     app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
     app.config.from_object(config_by_name.get(config_name, config_by_name['default']))
     
-    # Initialize Extensions
+    # Extensions are created once in app.extensions and bound here. This avoids
+    # circular imports and lets tests create an isolated application instance.
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
@@ -39,7 +47,8 @@ def create_app(config_name=None):
     def load_user(user_id):
         return User.query.get(int(user_id))
         
-    # Register blueprints
+    # Blueprints split public reading, authentication, contribution, community,
+    # and administrator responsibilities into separately owned URL groups.
     register_blueprints(app)
     
     # Register global error handlers
@@ -99,7 +108,8 @@ def create_app(config_name=None):
         # Ensure database tables exist in production
         db.create_all()
         
-        # Self-healing check for Roles, Admin user, and Communities
+        # These seed records make a fresh development/demo database navigable.
+        # Migrations remain the schema authority in a production workflow.
         from app.models.user import User, Role
         from app.models.community import Community
         
@@ -197,6 +207,7 @@ def create_app(config_name=None):
 
 
 def register_request_handlers(app):
+    """Attach anonymous-visitor identity, lightweight metrics, and cookies."""
     import uuid
     import hashlib
     from datetime import datetime
@@ -206,7 +217,8 @@ def register_request_handlers(app):
 
     @app.before_request
     def before_request_func():
-        # Skip static assets, health check, robots.txt, sitemap, favicon
+        # Assets and operational endpoints should not create visitor records or
+        # pollute reader-facing analytics.
         path = request.path
         if (path.startswith('/static/') or 
             path == '/health' or 
@@ -225,7 +237,8 @@ def register_request_handlers(app):
         else:
             g.set_anon_cookie = None
             
-        # Fetch or create AnonymousVisitor
+        # The cookie identifies a browser, not a signed-in account. It supports
+        # anonymous discussion attribution, voting, and moderation decisions.
         visitor = AnonymousVisitor.query.filter_by(uuid=anon_cookie).first()
         if not visitor:
             # Generate name based on UUID prefix
@@ -260,7 +273,8 @@ def register_request_handlers(app):
         # Set on global context
         g.visitor = visitor
         
-        # Track page view metrics selectively
+        # Store page views separately from Article.views so platform analytics
+        # can include non-article routes without altering content itself.
         article_id = None
         if path.startswith('/wiki/'):
             slug = path.split('/wiki/')[-1]
@@ -303,6 +317,7 @@ def register_blueprints(app):
     from app.blueprints.auth.routes import auth_bp
     from app.blueprints.cms.routes import cms_bp
     
+    # URL prefixes make ownership obvious before a request reaches a view.
     app.register_blueprint(main_bp)
     app.register_blueprint(wiki_bp, url_prefix='/wiki')
     app.register_blueprint(admin_bp, url_prefix='/admin')
