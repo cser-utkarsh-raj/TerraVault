@@ -4,6 +4,8 @@
 
 TerraVault is a full-stack knowledge and community platform combining the familiar structure of an encyclopedia with a real content-management system. It is designed around **structured knowledge, human contribution, revision history, roles, and useful analytics** rather than a collection of static pages.
 
+For a guided source tour, read [CODE_READING_PATH.md](CODE_READING_PATH.md) alongside this overview.
+
 It is one of the larger platform projects in the **.dot** ecosystem.
 
 ## ✨ What TerraVault Provides

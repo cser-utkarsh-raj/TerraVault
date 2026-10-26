@@ -1,3 +1,9 @@
+"""Reusable article creation and revision-history operations.
+
+Routes collect request/form data; this service turns it into an Article plus
+the ArticleVersion record that preserves editorial provenance.
+"""
+
 from app.extensions import db
 from app.models.article import Article, ArticleVersion, Category, Tag
 from app.models.user import User
@@ -5,6 +11,7 @@ from app.models.interaction import Draft
 from app.utils.helpers import slugify, calculate_reading_time
 
 class CMSService:
+    """Keeps current article state and its recorded revision in sync."""
     @staticmethod
     def get_all_articles_admin():
         """Retrieve all articles, including unpublished, for admin management."""

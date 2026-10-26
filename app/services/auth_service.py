@@ -1,7 +1,10 @@
+"""Authentication and profile service functions shared by auth views."""
+
 from app.extensions import db
 from app.models.user import User, Profile, Role
 
 class AuthService:
+    """Encapsulates password checks and account/profile persistence."""
     @staticmethod
     def register_user(username, email, password):
         """Register a new user, create their profile, and assign default 'User' role."""

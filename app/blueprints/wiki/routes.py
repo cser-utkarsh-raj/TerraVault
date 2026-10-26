@@ -1,3 +1,5 @@
+"""Reader routes for published articles, navigation aids, and bookmarks."""
+
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, g
 from flask_login import login_required, current_user
 from app.services.wiki_service import WikiService
@@ -13,7 +15,8 @@ def article_view(slug):
     if not article:
         abort(404)
         
-    # Generate Table of Contents and inject anchor ids into headings
+    # The stored article body is transformed at render time: headings gain
+    # stable anchor IDs and the matching table of contents points to them.
     toc = generate_toc(article.content)
     processed_content = inject_header_ids(article.content)
     
@@ -29,7 +32,8 @@ def article_view(slug):
     bookmarked = False
     if g.visitor:
         bookmarked = WikiService.is_bookmarked(g.visitor.uuid, article.id)
-        # Log reading history entry
+        # Anonymous history supports a personalized reading trail without
+        # requiring account registration for basic discovery.
         WikiService.log_reading_history(g.visitor.uuid, article.id, time_spent=30) # default initial read weight
         
     # Build breadcrumbs list

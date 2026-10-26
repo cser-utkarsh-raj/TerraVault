@@ -1,3 +1,5 @@
+"""Administrator-only moderation, content, analytics, and export views."""
+
 from functools import wraps
 import csv
 import io
@@ -19,6 +21,8 @@ admin_bp = Blueprint('admin', __name__)
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Flask-Login confirms a session; the role check then prevents a normal
+        # reader from reaching administrator operations.
         if not current_user.is_authenticated or not current_user.is_admin:
             flash("Admin access required.", "danger")
             return redirect(url_for('admin.login'))
@@ -69,7 +73,8 @@ def logout():
 @login_required
 @admin_required
 def dashboard():
-    # Statistics calculations
+    # Aggregate persisted events rather than trusting browser counters, so the
+    # moderation and traffic summary remains auditable after the fact.
     total_visitors = AnonymousVisitor.query.count()
     total_page_views = PageViewMetric.query.count()
     total_discussions = Discussion.query.count()

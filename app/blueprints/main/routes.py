@@ -1,3 +1,5 @@
+"""Public discovery routes: home, search, categories, tags, and health."""
+
 from flask import Blueprint, render_template, request, jsonify, current_app, Response, send_from_directory, flash, redirect, url_for
 from app.services.wiki_service import WikiService
 from app.models.article import Category, Tag, Article
@@ -18,7 +20,8 @@ def home():
     communities = Community.query.all()
     popular_discussions = Discussion.query.filter(Discussion.status != 'removed').order_by(Discussion.views.desc()).limit(5).all()
     
-    # Inject net score into popular discussions
+    # Discussions persist individual votes. Calculate the display-only net
+    # score here rather than adding a second, potentially stale score column.
     from app.models.community import Vote
     for disc in popular_discussions:
         upvotes = Vote.query.filter_by(discussion_id=disc.id, value=1).count()
@@ -60,7 +63,8 @@ def search():
             downvotes = Vote.query.filter_by(discussion_id=disc.id, value=-1).count()
             disc.score = upvotes - downvotes
             
-        # Log search query for admin metrics
+        # Search logs are independent from article results so administrators can
+        # learn demand even when a query returns nothing useful.
         search_log = SearchMetric(query=query)
         db.session.add(search_log)
         db.session.commit()

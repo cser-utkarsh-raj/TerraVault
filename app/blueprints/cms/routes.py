@@ -1,3 +1,5 @@
+"""Contributor CMS pages for drafting and editing knowledge articles."""
+
 import os
 from functools import wraps
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
@@ -14,6 +16,8 @@ def moderator_required(f):
     """Decorator to limit route access to Moderators and Admins."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Login alone is not enough: contributor actions need Moderator or
+        # Admin privileges, as exposed by the User model's role helpers.
         if not current_user.is_authenticated or not current_user.is_moderator:
             flash("Access denied. You do not have moderator permissions.", "danger")
             return redirect(url_for('main.home'))

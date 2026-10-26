@@ -1,3 +1,5 @@
+"""Registered-account pages: credentials, verification, recovery, profile."""
+
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from app.extensions import db
@@ -24,7 +26,9 @@ def register():
             password=form.password.data
         )
         flash('Account created successfully! A verification email has been simulated.', 'success')
-        # In this production skeleton, we immediately log the user in but show them a banner to verify email.
+        # The current product uses a simulated verification step. A deployed
+        # email flow would keep the same route boundary but send a signed,
+        # expiring verification token instead.
         login_user(user)
         return redirect(url_for('auth.verify_prompt'))
         
@@ -94,7 +98,8 @@ def forgot_password():
         user = User.query.filter_by(email=form.email.data).first()
         if user:
             flash('A password reset link has been simulated and sent to your email.', 'info')
-            # Mock reset URL: /auth/reset-password/<user_id>
+            # This is a demonstration reset flow. Real deployments must issue
+            # a short-lived, unguessable reset token rather than expose an ID.
             # (In a real system, you would generate a secure cryptographic token)
             return redirect(url_for('auth.reset_password', user_id=user.id))
         else:
